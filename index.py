@@ -1,4 +1,12 @@
-import cv2
+try:
+    import cv2
+except ModuleNotFoundError:
+    import sys
+    print("Error: required module 'cv2' (OpenCV) is not installed.")
+    print(f"Python interpreter: {sys.executable}")
+    print("Install with: python -m pip install opencv-python numpy")
+    sys.exit(1)
+
 import os
 import time
 import numpy as np
@@ -32,35 +40,53 @@ def convert_frame_to_ascii(frame, width=80):
     
     return ascii_frame
 
-def play_video_in_terminal(video_path, width=80, fps=30):
+def play_video_in_terminal(video_path, width=80, fps=0):
     """
-    Play Ser Harwin Strong a video in the terminal using ASCII characters
+    Play a video in the terminal using ASCII characters.
+
+    FPS selection order:
+      1. explicit `fps` argument if > 0
+      2. video file's reported FPS if available (> 0)
+      3. fallback to 30 FPS
     """
     if not os.path.exists(video_path):
         print(f"Error: Video file '{video_path}' not found.")
         return
-    
+
     cap = cv2.VideoCapture(video_path)
 
+    if not cap.isOpened():
+        print(f"Error: Could not open video file '{video_path}'.")
+        return
+
     video_fps = cap.get(cv2.CAP_PROP_FPS)
-    frame_delay = 1.0 / video_fps if video_fps > 0 else 1.0 / fps
-    
+
+    # Determine chosen_fps safely
+    if fps is not None and fps > 0:
+        chosen_fps = fps
+    elif video_fps and video_fps > 0:
+        chosen_fps = video_fps
+    else:
+        chosen_fps = 30
+
+    frame_delay = 1.0 / float(chosen_fps)
+
     try:
         while True:
             ret, frame = cap.read()
             if not ret:
                 break
-            
+
             ascii_art = convert_frame_to_ascii(frame, width)
-            
+
             os.system('cls' if os.name == 'nt' else 'clear')
             print(ascii_art)
-            
+
             time.sleep(frame_delay)
-            
+
     except KeyboardInterrupt:
         print("\nVideo playback interrupted.")
-    
+
     finally:
         cap.release()
 
